@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
-const REGION = "us-east-005";
-const BUCKET_NAME = "your-bucket-name";
-const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
+const REGION = "eu-central-003";
+const BUCKET_NAME = "dev-samaro";
+const ENDPOINT = "https://s3.eu-central-003.backblazeb2.com";
 
 const s3Client = new S3Client({
   region: REGION,
