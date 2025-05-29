@@ -17,6 +17,8 @@ const s3Client = new S3Client({
 
 export default function App() {
   const [objects, setObjects] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [prefix, setPrefix] = useState("");
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,12 +27,15 @@ export default function App() {
     try {
       const command = new ListObjectsV2Command({
         Bucket: BUCKET_NAME,
-        MaxKeys: 10,
+        Prefix: "",
+        Delimiter: "/",
+        MaxKeys: 100,
         ContinuationToken: continuationToken,
       });
 
       const response = await s3Client.send(command);
       setObjects(response.Contents || []);
+      setFolders(response.CommonPrefixes?.map(p => p.Prefix) || []);
       setToken(response.NextContinuationToken || null);
     } catch (error) {
       console.error("Error fetching objects:", error);
@@ -40,25 +45,66 @@ export default function App() {
 
   useEffect(() => {
     fetchObjects();
-  }, []);
+  }, [prefix]);
+
+
+  const handleFolderClick = (folderPrefix) => {
+    setPrefix(folderPrefix);
+    setToken(null);
+  };
+
+  const handleBack = () => {
+    if (!prefix) return;
+    const parts = prefix.split("/").filter(Boolean);
+    parts.pop();
+    setPrefix(parts.length ? parts.join("/") + "/" : "");
+    setToken(null);
+  };
+
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1>📦 Backblaze B2 File Browser</h1>
+    <div className="p-4 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">📁 Backblaze B2 File Browser</h1>
+
+      {prefix && (
+        <button onClick={handleBack} className="mb-4 text-blue-600 underline">
+          ⬅️ Go Back
+        </button>
+      )}
+
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <ul>
-          {objects.map((obj) => (
-            <li key={obj.Key}>
-              <strong>{obj.Key}</strong> — {obj.Size} bytes
-            </li>
-          ))}
-        </ul>
+        <>
+          {folders.length > 0 && (
+            <ul className="mb-4 space-y-2">
+              {folders.map((folder) => (
+                <li key={folder} className="p-2 border rounded cursor-pointer bg-gray-100 hover:bg-gray-200" onClick={() => handleFolderClick(folder)}>
+                  📂 <strong>{folder.replace(prefix, "")}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <ul className="space-y-2">
+            {objects.map((obj) => (
+              <li key={obj.Key} className="p-2 border rounded shadow">
+                <strong>{obj.Key.replace(prefix, "")}</strong> — {obj.Size} bytes
+              </li>
+            ))}
+          </ul>
+        </>
       )}
-      <button onClick={() => fetchObjects(token)} disabled={!token || loading}>
-        {loading ? "Loading..." : token ? "Next Page ➡️" : "No More Files"}
-      </button>
+
+      <div className="mt-4">
+        <button
+          onClick={() => fetchObjects(token)}
+          disabled={!token || loading}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading ? "Loading..." : token ? "Next Page ➡️" : "No More Files"}
+        </button>
+      </div>
     </div>
   );
 }
