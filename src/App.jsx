@@ -18,18 +18,18 @@ const s3Client = new S3Client({
 export default function App() {
   const [objects, setObjects] = useState([]);
   const [folders, setFolders] = useState([]);
-  const [prefix, setPrefix] = useState("");
+  const [prefix, setPrefix] = useState(null); // null = not entered bucket view yet
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchObjects = async (continuationToken = null) => {
+  const fetchObjects = async (continuationToken = null, currentPrefix = "") => {
     setLoading(true);
     try {
       const command = new ListObjectsV2Command({
         Bucket: BUCKET_NAME,
-        Prefix: "",
+        Prefix: currentPrefix,
         Delimiter: "/",
-        MaxKeys: 100,
+        MaxKeys: 10,
         ContinuationToken: continuationToken,
       });
 
@@ -44,9 +44,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchObjects();
+    if (prefix !== null) {
+      fetchObjects(null, prefix);
+    }
   }, [prefix]);
 
+  const handleEnterBucket = () => {
+    setPrefix("");
+  };
 
   const handleFolderClick = (folderPrefix) => {
     setPrefix(folderPrefix);
@@ -54,57 +59,63 @@ export default function App() {
   };
 
   const handleBack = () => {
-    if (!prefix) return;
+    if (prefix === "") {
+      setPrefix(null); // Go back to bucket selection
+      return;
+    }
     const parts = prefix.split("/").filter(Boolean);
     parts.pop();
     setPrefix(parts.length ? parts.join("/") + "/" : "");
     setToken(null);
   };
 
-
   return (
     <div className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">📁 Backblaze B2 File Browser</h1>
+      <h1 className="text-2xl font-bold mb-4">📁 Backblaze B2 Buckets</h1>
 
-      {prefix && (
-        <button onClick={handleBack} className="mb-4 text-blue-600 underline">
-          ⬅️ Go Back
-        </button>
-      )}
-
-      {loading ? (
-        <p>Loading...</p>
+      {prefix === null ? (
+        <div>
+          <button onClick={handleEnterBucket} className="text-blue-600 underline text-lg">
+            📦 {BUCKET_NAME}
+          </button>
+        </div>
       ) : (
         <>
-          {folders.length > 0 && (
-            <ul className="mb-4 space-y-2">
-              {folders.map((folder) => (
-                <li key={folder} className="p-2 border rounded cursor-pointer bg-gray-100 hover:bg-gray-200" onClick={() => handleFolderClick(folder)}>
-                  📂 <strong>{folder.replace(prefix, "")}</strong>
-                </li>
-              ))}
-            </ul>
+          <button onClick={handleBack} className="mb-4 text-blue-600 underline">
+            ⬅️ Go Back
+          </button>
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <>
+              {folders.length > 0 && (
+                <ul className="mb-4 space-y-2">
+                  {folders.map((folder) => (
+                    <li key={folder} className="p-2 border rounded cursor-pointer bg-gray-100 hover:bg-gray-200" onClick={() => handleFolderClick(folder)}>
+                      📂 <strong>{folder.replace(prefix, "")}</strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <ul className="space-y-2">
+                {objects.map((obj) => (
+                  <li key={obj.Key} className="p-2 border rounded shadow">
+                    <strong>{obj.Key.replace(prefix, "")}</strong> — {obj.Size} bytes
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
-          <ul className="space-y-2">
-            {objects.map((obj) => (
-              <li key={obj.Key} className="p-2 border rounded shadow">
-                <strong>{obj.Key.replace(prefix, "")}</strong> — {obj.Size} bytes
-              </li>
-            ))}
-          </ul>
+          <div className="mt-4">
+            <button onClick={() => fetchObjects(token, prefix)} disabled={!token || loading} className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50">
+              {loading ? "Loading..." : token ? "Next Page ➡️" : "No More Files"}
+            </button>
+          </div>
         </>
       )}
-
-      <div className="mt-4">
-        <button
-          onClick={() => fetchObjects(token)}
-          disabled={!token || loading}
-          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-        >
-          {loading ? "Loading..." : token ? "Next Page ➡️" : "No More Files"}
-        </button>
-      </div>
     </div>
   );
 }
