@@ -5,7 +5,7 @@ const REGION = "eu-central-003";
 const BUCKET_NAME = "dev-samaro";
 const ENDPOINT = "https://s3.eu-central-003.backblazeb2.com";
 
-const s3Client = new S3Client({
+const s3Client = new S3Client({ //bucket creds: from the .env file
   region: REGION,
   endpoint: ENDPOINT,
   credentials: {
@@ -22,21 +22,22 @@ export default function App() {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  //fetching from Backblaze
   const fetchObjects = async (continuationToken = null, currentPrefix = "") => {
     setLoading(true);
     try {
       const command = new ListObjectsV2Command({
         Bucket: BUCKET_NAME,
         Prefix: currentPrefix,
-        Delimiter: "/",
-        MaxKeys: 10,
+        Delimiter: "/", //groups common prefixes (folders)
+        MaxKeys: 50,
         ContinuationToken: continuationToken,
       });
 
       const response = await s3Client.send(command);
-      setObjects(response.Contents || []);
-      setFolders(response.CommonPrefixes?.map(p => p.Prefix) || []);
-      setToken(response.NextContinuationToken || null);
+      setObjects(response.Contents || []); //files
+      setFolders(response.CommonPrefixes?.map(p => p.Prefix) || []); //folders
+      setToken(response.NextContinuationToken || null); //next page token
     } catch (error) {
       console.error("Error fetching objects:", error);
     }
@@ -49,16 +50,16 @@ export default function App() {
     }
   }, [prefix]);
 
-  const handleEnterBucket = () => {
+  const handleEnterBucket = () => { // When user clicks the bucket name, enter the root folder view
     setPrefix("");
   };
 
-  const handleFolderClick = (folderPrefix) => {
+  const handleFolderClick = (folderPrefix) => { // Navigate into the selected folder
     setPrefix(folderPrefix);
     setToken(null);
   };
 
-  const handleBack = () => {
+  const handleBack = () => { // Navigate one level up in the folder hierarchy
     if (prefix === "") {
       setPrefix(null); // Go back to bucket selection
       return;
@@ -74,6 +75,7 @@ export default function App() {
       <h1 className="text-2xl font-bold mb-4">📁 Backblaze B2 Buckets</h1>
 
       {prefix === null ? (
+        // Display clickable bucket name on top
         <div>
           <button onClick={handleEnterBucket} className="text-blue-600 underline text-lg">
             📦 {BUCKET_NAME}
@@ -89,6 +91,7 @@ export default function App() {
             <p>Loading...</p>
           ) : (
             <>
+              //list of folders in current directory
               {folders.length > 0 && (
                 <ul className="mb-4 space-y-2">
                   {folders.map((folder) => (
@@ -99,6 +102,7 @@ export default function App() {
                 </ul>
               )}
 
+              //list of files in current directory
               <ul className="space-y-2">
                 {objects.map((obj) => (
                   <li key={obj.Key} className="p-2 border rounded shadow">
@@ -108,7 +112,8 @@ export default function App() {
               </ul>
             </>
           )}
-
+        
+          //Pagination button
           <div className="mt-4">
             <button onClick={() => fetchObjects(token, prefix)} disabled={!token || loading} className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50">
               {loading ? "Loading..." : token ? "Next Page ➡️" : "No More Files"}
