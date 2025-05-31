@@ -91,7 +91,7 @@ export default function App() {
             <p>Loading...</p>
           ) : (
             <>
-              //list of folders in current directory
+              {/*list of folders in current directory*/}
               {folders.length > 0 && (
                 <ul className="mb-4 space-y-2">
                   {folders.map((folder) => (
@@ -102,7 +102,7 @@ export default function App() {
                 </ul>
               )}
 
-              //list of files in current directory
+              {/*list of files in current directory*/}
               <ul className="space-y-2">
                 {objects.map((obj) => (
                   <li key={obj.Key} className="p-2 border rounded shadow">
@@ -113,7 +113,7 @@ export default function App() {
             </>
           )}
         
-          //Pagination button
+          {/*Pagination button*/}
           <div className="mt-4">
             <button onClick={() => fetchObjects(token, prefix)} disabled={!token || loading} className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50">
               {loading ? "Loading..." : token ? "Next Page ➡️" : "No More Files"}
